@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Localiza y Recicla — Lima</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  :root {
+    --verde:       #1e7a4a;
+    --verde-med:   #29a362;
+    --verde-light: #d4edda;
+    --verde-pale:  #f0faf4;
+    --gris-text:   #444;
+    --gris-sub:    #777;
+    --borde:       #e0e0e0;
+    --blanco:      #ffffff;
+    --oscuro:      #1a1a1a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
+    background: #fff;
+    color: var(--oscuro);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; width: 100%; z-index: 1000;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--borde);
+    height: 62px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem;
+  }
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: var(--verde);
+    text-decoration: none;
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600;
+  }
+  .nav-logo span { color: var(--oscuro); font-style: italic; font-weight: 400; }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a {
+    font-size: 0.82rem; font-weight: 400;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--gris-text); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--verde); }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    background: linear-gradient(150deg, #e8f7ef 0%, #f5fdf8 60%, #ffffff 100%);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center;
+    padding: 100px 2rem 5rem;
+    position: relative; overflow: hidden;
+  }
+  #hero::after {
+    content: '';
+    position: absolute; bottom: -2px; left: 0; right: 0; height: 80px;
+    background: linear-gradient(to bottom, transparent, #fff);
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--verde-light); color: var(--verde);
+    font-size: 0.75rem; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 6px 16px; border-radius: 30px;
+    margin-bottom: 1.8rem;
+    border: 1px solid rgba(30,122,74,0.2);
+  }
+  #hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-weight: 600; line-height: 1.05;
+    color: var(--oscuro);
+    letter-spacing: -0.01em;
+  }
+  #hero h1 em { color: var(--verde); font-style: italic; font-weight: 400; }
+  #hero p {
+    margin-top: 1.5rem; font-size: 1rem; font-weight: 300;
+    color: var(--gris-sub); max-width: 480px; line-height: 1.8;
+  }
+  .btn-hero {
+    margin-top: 2.5rem;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--verde); color: white;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500; font-size: 0.9rem;
+    padding: 13px 32px; border-radius: 50px;
+    text-decoration: none; letter-spacing: 0.03em;
+    transition: all 0.25s;
+    box-shadow: 0 4px 18px rgba(30,122,74,0.25);
+  }
+  .btn-hero:hover { background: #155c38; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(30,122,74,0.3); }
+  .hero-deco {
+    position: absolute; opacity: 0.06;
+    font-size: 22rem; line-height: 1;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none; user-select: none;
+  }
+
+  /* ── SECTION BASE ── */
+  section { padding: 6rem 2rem; }
+  .container { max-width: 1080px; margin: 0 auto; }
+  .sec-label {
+    display: inline-block;
+    font-size: 0.7rem; font-weight: 500; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--verde);
+    margin-bottom: 0.8rem;
+  }
+  .sec-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 600; line-height: 1.15; color: var(--oscuro);
+  }
+  .sec-title em { color: var(--verde); font-style: italic; font-weight: 400; }
+  .sec-sub { margin-top: 0.8rem; color: var(--gris-sub); font-weight: 300; line-height: 1.8; font-size: 0.93rem; }
+
+  /* ── MAPA ── */
+  #mapa { background: #fff; }
+  .map-header { text-align: center; margin-bottom: 2.5rem; }
+  .map-wrap {
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--borde);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+    position: relative;
+  }
+  #map { height: 500px; width: 100%; }
+  .geo-btn {
+    position: absolute; top: 12px; right: 12px; z-index: 500;
+    background: var(--verde); color: white; border: none;
+    padding: 9px 16px; border-radius: 8px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: background 0.2s;
+  }
+  .geo-btn:hover { background: #155c38; }
+
+  /* ── CARDS ── */
+  .centers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem; margin-top: 2rem;
+  }
+  .center-card {
+    background: #fff; border: 1px solid var(--borde);
+    border-radius: 12px; overflow: hidden;
+    transition: all 0.25s; cursor: pointer;
+    position: relative;
+  }
+  .center-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.1); transform: translateY(-3px); border-color: var(--verde-med); }
+  .card-img {
+    width: 100%; height: 150px; object-fit: cover;
+    display: block; background: var(--verde-pale);
+    transition: opacity 0.3s;
+  }
+  .card-body { padding: 1.1rem; }
+  .card-body h3 { font-size: 0.88rem; font-weight: 600; color: var(--verde); margin-bottom: 0.35rem; }
+  .card-body p { font-size: 0.77rem; color: var(--gris-sub); line-height: 1.55; font-weight: 300; }
+  .card-tag {
+    display: inline-block; margin-top: 0.6rem;
+    background: var(--verde-pale); color: var(--verde);
+    font-size: 0.68rem; font-weight: 500; padding: 2px 10px; border-radius: 20px;
+    border: 1px solid var(--verde-light);
+  }
+
+  /* ── LIGHTBOX ── */
+  #lightbox {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  #lightbox.open { display: flex; }
+  .lb-inner {
+    background: white; border-radius: 16px;
+    max-width: 540px; width: 100%; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: fadeUp 0.25s ease;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  #lb-img { width: 100%; height: 240px; object-fit: cover; display: block; background: var(--verde-pale); }
+  .lb-body { padding: 1.5rem; }
+  .lb-body h2 { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--verde); margin-bottom: 0.8rem; }
+  .lb-body p { font-size: 0.83rem; color: var(--gris-text); line-height: 1.7; font-weight: 300; margin-bottom: 0.4rem; }
+  .lb-close {
+    display: block; margin: 1rem 1.5rem 1.5rem;
+    background: var(--verde); color: white; border: none;
+    padding: 10px; border-radius: 8px; font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem; cursor: pointer; font-weight: 500; width: calc(100% - 3rem);
+  }
+  .lb-close:hover { background: #155c38; }
+
+  /* ── VIDEO ── */
+  #video-section { background: var(--verde-pale); border-top: 1px solid var(--verde-light); border-bottom: 1px solid var(--verde-light); }
+  .video-inner { display: grid; grid-template-columns: 1fr 1.2fr; gap: 4rem; align-items: center; }
+  .video-text p { color: var(--gris-sub); margin-top: 1rem; line-height: 1.8; font-weight: 300; font-size: 0.93rem; }
+  .video-frame {
+    border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--borde);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    aspect-ratio: 16/9;
+  }
+  .video-frame iframe { width: 100%; height: 100%; border: none; display: block; }
+
+  /* ── IMPORTANCIA ── */
+  #importancia { background: #fff; }
+  .imp-header { text-align: center; margin-bottom: 3rem; }
+  .imp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+  .imp-card {
+    background: var(--verde-pale); border-radius: 14px;
+    padding: 2rem 1.5rem; text-align: center;
+    border: 1px solid var(--verde-light);
+    transition: all 0.25s;
+  }
+  .imp-card:hover { transform: translateY(-4px); box-shadow: 0 6px 24px rgba(30,122,74,0.1); }
+  .imp-icon { font-size: 2.4rem; margin-bottom: 0.9rem; }
+  .imp-card h3 { font-size: 0.95rem; font-weight: 600; color: var(--verde); margin-bottom: 0.5rem; }
+  .imp-card p { font-size: 0.8rem; color: var(--gris-sub); line-height: 1.65; font-weight: 300; }
+  .stats-row {
+    display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;
+    margin-top: 3rem; padding: 2.5rem;
+    background: var(--verde); border-radius: 14px;
+  }
+  .stat { text-align: center; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 2.6rem; color: #fff; font-weight: 600; }
+  .stat-label { font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-top: 0.3rem; font-weight: 300; }
+
+  /* ── RECOMENDACIONES ── */
+  #recomendaciones { background: var(--verde-pale); border-top: 1px solid var(--verde-light); }
+  .rec-header { text-align: center; margin-bottom: 2.5rem; }
+  .rec-list { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .rec-item {
+    display: flex; gap: 1rem; align-items: flex-start;
+    background: #fff; border-radius: 12px;
+    padding: 1.4rem; border: 1px solid var(--borde);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .rec-item:hover { transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+  .rec-num {
+    min-width: 38px; height: 38px;
+    background: var(--verde-pale); color: var(--verde);
+    border: 1px solid var(--verde-light);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: 600;
+  }
+  .rec-item h4 { font-size: 0.87rem; font-weight: 600; color: var(--oscuro); margin-bottom: 0.3rem; }
+  .rec-item p { font-size: 0.78rem; color: var(--gris-sub); line-height: 1.65; font-weight: 300; }
+
+  /* ── QUIÉNES SOMOS ── */
+  #nosotros { background: #fff; }
+  .nos-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+  .nos-text p { color: var(--gris-sub); margin-top: 1rem; line-height: 1.9; font-weight: 300; font-size: 0.93rem; }
+  .nos-text .contact-line {
+    margin-top: 1.5rem; padding-top: 1.5rem;
+    border-top: 1px solid var(--borde);
+    font-size: 0.83rem; color: var(--gris-sub);
+  }
+  .nos-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .nos-val {
+    background: var(--verde-pale); border: 1px solid var(--verde-light);
+    border-radius: 12px; padding: 1.3rem; text-align: center;
+  }
+  .nos-val .vi { font-size: 1.8rem; margin-bottom: 0.5rem; }
+  .nos-val h4 { font-size: 0.83rem; font-weight: 600; color: var(--verde); }
+  .nos-val p { font-size: 0.74rem; color: var(--gris-sub); margin-top: 0.2rem; font-weight: 300; }
+
+  /* ── COMUNICADO ── */
+  #comunicado {
+    background: linear-gradient(135deg, #1e7a4a 0%, #29a362 100%);
+    padding: 5rem 2rem;
+    text-align: center;
+  }
+  .com-box {
+    max-width: 700px; margin: 0 auto;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 3rem 2.5rem;
+  }
+  .com-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .com-box h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem; color: #fff; font-weight: 600; line-height: 1.2; margin-bottom: 1rem;
+  }
+  .com-box p { color: rgba(255,255,255,0.85); line-height: 1.8; font-weight: 300; font-size: 0.95rem; margin-bottom: 1.8rem; }
+  .com-contacts { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; }
+  .com-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px; border-radius: 50px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500; font-size: 0.87rem;
+    text-decoration: none; transition: all 0.2s;
+  }
+  .com-btn.email { background: #fff; color: var(--verde); }
+  .com-btn.email:hover { background: #e8f7ef; }
+  .com-btn.wa { background: #25D366; color: #fff; }
+  .com-btn.wa:hover { background: #1ebe5d; }
+  .com-nota { margin-top: 1.5rem; font-size: 0.76rem; color: rgba(255,255,255,0.55); font-weight: 300; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #0f2d1c; padding: 2.5rem 2rem; text-align: center;
+    color: rgba(255,255,255,0.35); font-size: 0.78rem; font-weight: 300;
+  }
+  footer strong { color: rgba(255,255,255,0.6); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .video-inner, .nos-inner, .rec-list { grid-template-columns: 1fr; gap: 2rem; }
+    .stats-row { gap: 1.5rem; }
+  }
+
+  /* ── LEAFLET ── */
+  .leaflet-popup-content-wrapper { border-radius: 10px !important; font-family: 'Outfit', sans-serif; }
+  .leaflet-popup-content { font-size: 0.83rem; line-height: 1.6; }
+  .leaflet-popup-content b { color: var(--verde); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#hero" class="nav-logo">♻️ Localiza <span>y Recicla</span></a>
+  <ul class="nav-links">
+    <li><a href="#mapa">Mapa</a></li>
+    <li><a href="#video-section">Video</a></li>
+    <li><a href="#importancia">Importancia</a></li>
+    <li><a href="#recomendaciones">Consejos</a></li>
+    <li><a href="#nosotros">Nosotros</a></li>
+    <li><a href="#comunicado">Contáctanos</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-deco">♻</div>
+  <div class="hero-badge">🌿 Lima, Perú</div>
+  <h1>Localiza<br><em>y Recicla</em></h1>
+  <p>Encuentra los centros de reciclaje más cercanos a ti en Lima. Información actualizada, geolocalización y guías prácticas para reciclar mejor.</p>
+  <a href="#mapa" class="btn-hero">📍 Ver centros cerca de mí →</a>
+</section>
+
+<!-- MAPA -->
+<section id="mapa">
+  <div class="container">
+    <div class="map-header">
+      <div class="sec-label">📍 Geolocalización en tiempo real</div>
+      <h2 class="sec-title">Centros de <em>Reciclaje</em> en Lima</h2>
+      <p class="sec-sub" style="max-width:500px;margin-inline:auto">Haz clic en cualquier marcador del mapa para ver los detalles del centro. Usa el botón para centrar el mapa en tu ubicación.</p>
+    </div>
+    <div class="map-wrap">
+      <div id="map"></div>
+      <button class="geo-btn" onclick="locateMe()">📍 Mi ubicación</button>
+    </div>
+    <div class="centers-grid" id="centers-grid"></div>
+  </div>
+</section>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLB(event)">
+  <div class="lb-inner">
+    <img id="lb-img" src="" alt="">
+    <div class="lb-body">
+      <h2 id="lb-name"></h2>
+      <p id="lb-addr"></p>
+      <p id="lb-hours"></p>
+      <p id="lb-phone"></p>
+      <p id="lb-type"></p>
+      <p id="lb-rating"></p>
+    </div>
+    <button class="lb-close" onclick="document.getElementById('lightbox').classList.remove('open')">Cerrar ✕</button>
+  </div>
+</div>
+
+<!-- VIDEO -->
+<section id="video-section">
+  <div class="container">
+    <div class="video-inner">
+      <div class="video-text">
+        <div class="sec-label">🎬 Aprende</div>
+        <h2 class="sec-title">¿Por qué <em>reciclar</em> importa?</h2>
+        <p>Conoce cómo funciona el proceso de reciclaje en Lima, qué ocurre con tus residuos y de qué manera cada pequeña acción impacta en el futuro del planeta.</p>
+        <p style="margin-top:0.8rem">Aprende los pasos prácticos para separar correctamente tus residuos desde casa, el trabajo y tu comunidad.</p>
+      </div>
+      <div class="video-frame">
+        <iframe src="https://www.youtube.com/embed/aNMjYh3DJCE"
+          title="Reciclaje en Lima"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- IMPORTANCIA -->
+<section id="importancia">
+  <div class="container">
+    <div class="imp-header">
+      <div class="sec-label">🌍 Impacto ambiental</div>
+      <h2 class="sec-title">La <em>importancia</em> del reciclaje</h2>
+      <p class="sec-sub" style="max-width:520px;margin-inline:auto">Lima genera más de 8,000 toneladas de residuos al día. El reciclaje es nuestra herramienta más poderosa para cambiar esto.</p>
+    </div>
+    <div class="imp-grid">
+      <div class="imp-card"><div class="imp-icon">🌳</div><h3>Protege los bosques</h3><p>Reciclar una tonelada de papel salva aproximadamente 17 árboles y reduce el consumo de agua en 50%.</p></div>
+      <div class="imp-card"><div class="imp-icon">💧</div><h3>Cuida el agua</h3><p>El reciclaje de plásticos evita que lleguen a ríos y mares, protegiendo los ecosistemas acuáticos de Lima.</p></div>
+      <div class="imp-card"><div class="imp-icon">⚡</div><h3>Ahorra energía</h3><p>Reciclar aluminio consume 95% menos energía que producirlo desde cero. ¡Cada lata cuenta!</p></div>
+      <div class="imp-card"><div class="imp-icon">💼</div><h3>Genera empleo</h3><p>La industria del reciclaje en Perú emplea a más de 108,000 recicladores formales e informales.</p></div>
+      <div class="imp-card"><div class="imp-icon">🏙️</div><h3>Lima más limpia</h3><p>Una ciudad que recicla reduce residuos en botaderos y mejora significativamente la calidad del aire urbano.</p></div>
+      <div class="imp-card"><div class="imp-icon">🌡️</div><h3>Reduce el CO₂</h3><p>El reciclaje disminuye las emisiones de gases de efecto invernadero, combatiendo el cambio climático global.</p></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num">8K+</div><div class="stat-label">Toneladas de residuos/día en Lima</div></div>
+      <div class="stat"><div class="stat-num">15%</div><div class="stat-label">Solo se recicla este porcentaje</div></div>
+      <div class="stat"><div class="stat-num">108K</div><div class="stat-label">Recicladores en Perú</div></div>
+      <div class="stat"><div class="stat-num">95%</div><div class="stat-label">Energía ahorrada al reciclar aluminio</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- RECOMENDACIONES -->
+<section id="recomendaciones">
+  <div class="container">
+    <div class="rec-header">
+      <div class="sec-label">💡 Guía práctica</div>
+      <h2 class="sec-title">Cómo <em>reciclar bien</em> en Lima</h2>
+      <p class="sec-sub" style="max-width:480px;margin-inline:auto">Pequeños hábitos en casa marcan la diferencia. Sigue estos consejos para reciclar de forma correcta y eficiente.</p>
+    </div>
+    <div class="rec-list">
+      <div class="rec-item"><div class="rec-num">1</div><div><h4>Separa en origen</h4><p>Clasifica tus residuos desde casa: orgánicos, inorgánicos reciclables (plástico, papel, vidrio, metal) y no reciclables en bolsas distintas.</p></div></div>
+      <div class="rec-item"><div class="rec-num">2</div><div><h4>Limpia los envases</h4><p>Antes de llevar botellas o latas al punto de acopio, enjuágalos. Los residuos con restos de comida contaminan todo el lote.</p></div></div>
+      <div class="rec-item"><div class="rec-num">3</div><div><h4>Aplica las 3R en orden</h4><p><strong>Reducir</strong> primero, luego <strong>Reutilizar</strong> y finalmente <strong>Reciclar</strong>. No saltes al reciclaje sin pensar antes en las dos primeras.</p></div></div>
+      <div class="rec-item"><div class="rec-num">4</div><div><h4>Centros especializados</h4><p>Pilas, medicamentos, electrónicos y aceite NO van al reciclaje normal. Llévelos a los puntos RAEE o campañas municipales especiales.</p></div></div>
+      <div class="rec-item"><div class="rec-num">5</div><div><h4>Compra productos reciclados</h4><p>Cierra el ciclo: al elegir productos con materiales reciclados apoyas la industria del reciclaje en Lima.</p></div></div>
+      <div class="rec-item"><div class="rec-num">6</div><div><h4>Involucra a tu comunidad</h4><p>Propón en tu edificio, barrio o colegio instalar contenedores diferenciados. La acción colectiva multiplica el impacto individual.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- QUIÉNES SOMOS -->
+<section id="nosotros">
+  <div class="container">
+    <div class="nos-inner">
+      <div class="nos-text">
+        <div class="sec-label">🤝 Nuestra historia</div>
+        <h2 class="sec-title">¿Quiénes <em>somos</em>?</h2>
+        <p><strong style="color:var(--verde)">Localiza y Recicla</strong> nació como una iniciativa ciudadana impulsada por jóvenes limeños comprometidos con el medio ambiente y el futuro de nuestra ciudad.</p>
+        <p>Somos un equipo de ambientalistas, diseñadores y tecnólogos que creemos que la información es el primer paso para el cambio. Nuestro objetivo es conectar a los ciudadanos de Lima con los recursos de reciclaje disponibles de manera sencilla y gratuita.</p>
+        <p>Trabajamos en alianza con municipalidades, ONGs ambientales y empresas recicladoras para mantener actualizada nuestra base de datos en toda la provincia de Lima.</p>
+        <div class="contact-line">
+          📧 reciclaaylocaliza@gmail.com &nbsp;|&nbsp; 📍 Lima, Perú
+        </div>
+      </div>
+      <div>
+        <div class="nos-vals">
+          <div class="nos-val"><div class="vi">🌱</div><h4>Sostenibilidad</h4><p>Pensamos en el largo plazo.</p></div>
+          <div class="nos-val"><div class="vi">🔍</div><h4>Transparencia</h4><p>Información veraz y verificada.</p></div>
+          <div class="nos-val"><div class="vi">🤲</div><h4>Comunidad</h4><p>Juntos somos más fuertes.</p></div>
+          <div class="nos-val"><div class="vi">💡</div><h4>Innovación</h4><p>Tecnología al servicio del planeta.</p></div>
+        </div>
+        <div style="margin-top:1.2rem;padding:1.4rem;background:var(--verde-pale);border:1px solid var(--verde-light);border-radius:12px">
+          <p style="font-size:0.83rem;color:var(--gris-sub);line-height:1.75;font-weight:300">
+            💬 <em>"Cada envase que reciclas es una decisión por el futuro. Localiza y Recicla existe para que esa decisión sea fácil, cercana e inspiradora."</em>
+          </p>
+          <p style="font-size:0.73rem;color:#aaa;margin-top:0.5rem;font-weight:300">— Equipo Localiza y Recicla</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMUNICADO -->
+<section id="comunicado">
+  <div class="com-box">
+    <div class="com-icon">📣</div>
+    <h2>¿Conoces un punto de reciclaje que no está en nuestro mapa?</h2>
+    <p>
+      Tu información es valiosa para la comunidad. Si conoces un centro de acopio, punto de reciclaje o iniciativa ambiental en Lima que no aparece en nuestra plataforma, ¡haznos saber! Juntos podemos construir el directorio más completo de Lima.
+    </p>
+    <div class="com-contacts">
+      <a href="mailto:reciclaaylocaliza@gmail.com" class="com-btn email">
+        ✉️ reciclaaylocaliza@gmail.com
+      </a>
+      <a href="https://wa.me/51999956565?text=Hola!%20Quiero%20reportar%20un%20punto%20de%20reciclaje%20en%20Lima" target="_blank" class="com-btn wa">
+        💬 WhatsApp 999 956 565
+      </a>
+    </div>
+    <p class="com-nota">Revisamos y verificamos cada punto reportado antes de agregarlo al mapa. ¡Gracias por colaborar!</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2025 <strong>Localiza y Recicla</strong> — Hecho con 💚 para Lima y el planeta.<br>
+  <span>La información de los centros es referencial. Verifica horarios antes de visitar.</span></p>
+</footer>
+
+<!-- LEAFLET JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── CENTROS DATA ──
+const centers = [
+  {
+    name: "RECIPACK",
+    address: "Av. Sebastián Lorente 610, Lima",
+    lat: -12.0485002, lng: -77.0128414,
+    phone: "+51 983 099 095",
+    type: "Reciclaje general",
+    hours: "Lun–Vie 8am–5pm",
+    rating: "⭐ 4.9",
+    img: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=600&q=80"
+  },
+  {
+    name: "Perú Recycles COIPSA",
+    address: "Av. Argentina 5064, Callao",
+    lat: -12.0482302, lng: -77.094166,
+    phone: "+51 4511141",
+    type: "Reciclaje industrial",
+    hours: "Lun–Vie 8am–5pm",
+    rating: "⭐ 4.4",
+    img: "https://images.unsplash.com/photo-1604187351574-c75ca79f5807?w=600&q=80"
+  },
+  {
+    name: "Recicladora García",
+    address: "Av. Morales Duárez cdra.3, Lima",
+    lat: -12.0377337, lng: -77.0487311,
+    phone: "+51 940 663 620",
+    type: "Papel, cartón, plástico",
+    hours: "Lun–Sáb 9am–5pm",
+    rating: "⭐ 4.2",
+    img: "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=600&q=80"
+  },
+  {
+    name: "Reciclaje y Chatarra Gambini",
+    address: "Av. Alfonso Ugarte 250, Lima",
+    lat: -12.042266, lng: -77.0434036,
+    phone: "+51 945 640 643",
+    type: "Metal y chatarra",
+    hours: "Lun–Sáb 9:30am–7:30pm",
+    rating: "⭐ 5.0",
+    img: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&q=80"
+  },
+  {
+    name: "Recicla Perú – Sol. Ambientales",
+    address: "Av. Morales Duárez, Lima",
+    lat: -12.0463731, lng: -77.042754,
+    phone: "+51 930 750 500",
+    type: "Soluciones ambientales",
+    hours: "Abierto 24 horas",
+    rating: "⭐ 5.0",
+    img: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80"
+  },
+  {
+    name: "Transnational Trade Services",
+    address: "Olmos 929, Lima",
+    lat: -12.0384437, lng: -77.0570661,
+    phone: "+51 910 245 112",
+    type: "Papel, cartón y plástico",
+    hours: "Abierto 24 horas",
+    rating: "⭐ 3.0",
+    img: "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=600&q=80"
+  },
+  {
+    name: "Recy Clean",
+    address: "Jr. Nevado Yanahuanca, Lima",
+    lat: -12.1971349, lng: -76.9935401,
+    phone: "+51 987 206 543",
+    type: "Reciclaje limpio",
+    hours: "Lun–Sáb 8am–6pm",
+    rating: "⭐ 5.0",
+    img: "https://images.unsplash.com/photo-1542621334-a254cf47733d?w=600&q=80"
+  },
+  {
+    name: "Emaus Reciclaje Perú",
+    address: "Villa El Salvador, Lima",
+    lat: -12.230996, lng: -76.9372619,
+    phone: "+51 997 054 587",
+    type: "Recicla y Dona",
+    hours: "Todos los días 8am–6pm",
+    rating: "⭐ 3.5",
+    img: "https://images.unsplash.com/photo-1593636049952-26b0d2cfd6f3?w=600&q=80"
+  },
+  {
+    name: "Punto Acopio RAEE Claro – San Isidro",
+    address: "Av. Las Begonias 796, San Isidro",
+    lat: -12.0960441, lng: -77.0261639,
+    phone: "Consultar",
+    type: "Electrónicos (RAEE)",
+    hours: "Consultar horario",
+    rating: "—",
+    img: "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&q=80"
+  },
+  {
+    name: "Punto Acopio RAEE Claro – Miraflores",
+    address: "Av. José Larco 652, Miraflores",
+    lat: -12.1238024, lng: -77.0294421,
+    phone: "Consultar",
+    type: "Electrónicos (RAEE)",
+    hours: "Consultar horario",
+    rating: "⭐ 4.5",
+    img: "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=600&q=80"
+  },
+  {
+    name: "Punto de Acopio – Chorrillos",
+    address: "Belén, Chorrillos",
+    lat: -12.1901249, lng: -77.0037475,
+    phone: "—",
+    type: "Punto de acopio vecinal",
+    hours: "8am–10pm todos los días",
+    rating: "⭐ 5.0",
+    img: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=600&q=80"
+  },
+    {
+    name: "Punto de Acopio – La Perla",
+    address: "Lima 660",
+    lat: -12.191560, lng: -77.0020023,
+    phone: "—",
+    type: "Punto de acopio vecinal",
+    hours: "8am–10pm todos los días",
+    rating: "⭐ 5.0",
+    img: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=600&q=80"
+  },
+];
+
+// ── MAPA ──
+const map = L.map('map').setView([-12.065, -77.04], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+const mkIcon = L.divIcon({
+  html: `<div style="background:#1e7a4a;color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,0.25);border:2px solid #29a362">♻️</div>`,
+  className: '', iconSize: [30,30], iconAnchor: [15,15]
+});
+
+centers.forEach(c => {
+  L.marker([c.lat, c.lng], { icon: mkIcon })
+    .addTo(map)
+    .bindPopup(`<b>${c.name}</b><br>📍 ${c.address}<br>🕐 ${c.hours}<br>📞 ${c.phone}`)
+    .on('click', () => openLB(c));
+});
+
+// ── GEOLOCALIZACIÓN ──
+let userMarker = null;
+function locateMe() {
+  if (!navigator.geolocation) { alert("Tu navegador no soporta geolocalización."); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    if (userMarker) map.removeLayer(userMarker);
+    const meIcon = L.divIcon({
+      html: `<div style="background:#e74c3c;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,0.3);border:3px solid white">📍</div>`,
+      className: '', iconSize: [34,34], iconAnchor: [17,17]
+    });
+    userMarker = L.marker([lat, lng], { icon: meIcon }).addTo(map).bindPopup("<b>¡Estás aquí!</b>").openPopup();
+    map.setView([lat, lng], 14);
+  }, () => alert("No se pudo obtener tu ubicación. Verifica permisos del navegador."));
+}
+
+// ── LIGHTBOX ──
+function openLB(c) {
+  document.getElementById('lb-img').src = c.img;
+  document.getElementById('lb-img').alt = c.name;
+  document.getElementById('lb-name').textContent = c.name;
+  document.getElementById('lb-addr').textContent = '📍 ' + c.address;
+  document.getElementById('lb-hours').textContent = '🕐 ' + c.hours;
+  document.getElementById('lb-phone').textContent = '📞 ' + c.phone;
+  document.getElementById('lb-type').textContent = '♻️ ' + c.type;
+  document.getElementById('lb-rating').textContent = c.rating !== '—' ? c.rating : '';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLB(e) {
+  if (e.target === document.getElementById('lightbox')) {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+}
+
+// ── CARDS ──
+const grid = document.getElementById('centers-grid');
+centers.forEach(c => {
+  const card = document.createElement('div');
+  card.className = 'center-card';
+  card.innerHTML = `
+    <img class="card-img" src="${c.img}" alt="${c.name}" loading="lazy">
+    <div class="card-body">
+      <h3>♻️ ${c.name}</h3>
+      <p>📍 ${c.address}</p>
+      <p>🕐 ${c.hours} · 📞 ${c.phone}</p>
+      <span class="card-tag">${c.type}</span>
+      ${c.rating !== '—' ? `<span class="card-tag" style="margin-left:4px">${c.rating}</span>` : ''}
+    </div>
+  `;
+  card.onclick = () => {
+    openLB(c);
+    map.setView([c.lat, c.lng], 16);
+    document.getElementById('mapa').scrollIntoView({ behavior: 'smooth' });
+  };
+  grid.appendChild(card);
+});
+
+// ── SCROLL REVEAL ──
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.style.opacity = 1; e.target.style.transform = 'translateY(0)'; }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.imp-card,.rec-item,.center-card,.nos-val').forEach(el => {
+  el.style.opacity = 0; el.style.transform = 'translateY(18px)';
+  el.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+  io.observe(el);
+});
+</script>
+</body>
+</html>
